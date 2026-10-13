@@ -1,0 +1,18 @@
+# Compiled simulation outputs
+test/*
+
+# Keep the test directory
+!test/.gitkeep
+
+# Waveform files
+*.vcd
+*.fst
+*.lxt
+*.lxt2
+
+# Tool-generated files
+*.out
+*.log
+
+# macOS
+.DS_Store
