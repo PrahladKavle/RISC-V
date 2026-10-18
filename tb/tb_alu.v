@@ -4,18 +4,22 @@ module tb_alu;
 
     reg [31:0] a;
     reg [31:0] b;
-    reg [2:0] ctrl;
+    reg [3:0] ctrl;
 
     wire [31:0] result;
     wire zero;
 
-    localparam [2:0]
-        ADD = 3'b000,
-        SUB = 3'b001,
-        AND = 3'b010,
-        OR  = 3'b011,
-        XOR = 3'b100,
-        SLT = 3'b101;
+    localparam [3:0]
+        ADD = 4'b0000,
+        SUB = 4'b0001,
+        AND = 4'b0010,
+        OR  = 4'b0011,
+        XOR = 4'b0100,
+        SLT = 4'b0101,
+        SLL = 4'b0110,
+        SRL = 4'b0111,
+        SRA = 4'b1000,
+        SLTU = 4'b1001;
 
     alu dut (
         .a(a),
@@ -150,7 +154,7 @@ module tb_alu;
         // Unsupported control value
         a = 32'd10;
         b = 32'd20;
-        ctrl = 3'b111;
+        ctrl = 4'b0111;
         #1;
 
         if ((result !== 32'd0) || (zero !== 1'b1))

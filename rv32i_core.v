@@ -27,7 +27,7 @@ module rv32i_core #(
     wire [6:0] funct7;
 
     // Control signals
-    wire [2:0] alu_ctrl;
+    wire [3:0] alu_ctrl;
     wire reg_write;
     wire mem_write;
     wire mem_read;

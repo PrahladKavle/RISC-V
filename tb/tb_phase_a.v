@@ -1,3 +1,8 @@
+// This is a testbench for the RISC-V core that tests Phase A of the project. 
+// It initializes the core with a specific program and checks the values of 
+// registers and memory after execution.
+
+
 `timescale 1ns/1ps
 
 module tb_phase_a;
