@@ -13,7 +13,9 @@ module control_unit (
     output reg mem_to_reg,
     output reg branch,
     output reg jump,
-    output reg [1:0] imm_sel
+    output reg [1:0] imm_sel,
+    output reg [1:0] mem_size,
+    output reg load_unsigned
 );
     // Opcodes
     localparam [6:0]
@@ -62,7 +64,15 @@ module control_unit (
         F7_ADD = 7'b0000000, // for ADD and SLL
         F7_SUB    = 7'b0100000; // for SUB and SRA
 
+    // Memory size for load/store instructions
+    localparam [1:0]
+        MEM_BYTE = 2'b00,
+        MEM_HALF = 2'b01,
+        MEM_WORD = 2'b10;
+
     always @(*) begin
+        mem_size = MEM_WORD;
+        load_unsigned = 1'b0;
         case (opcode)
             OP_RTYPE: begin
                 reg_write = 1'b1;
@@ -119,6 +129,32 @@ module control_unit (
                 jump = 1'b0;
                 imm_sel = IMM_ITYPE;
                 alu_ctrl = ALU_ADD; // Address calculation
+                case (funct3)
+                    3'b000: begin
+                        mem_size = MEM_BYTE;
+                        load_unsigned = 1'b0; // LB
+                    end
+                    3'b001: begin
+                        mem_size = MEM_HALF;
+                        load_unsigned = 1'b0; // LH
+                    end
+                    3'b010: begin
+                        mem_size = MEM_WORD;
+                        load_unsigned = 1'b0; // LW
+                    end
+                    3'b100: begin
+                        mem_size = MEM_BYTE;
+                        load_unsigned = 1'b1; // LBU
+                    end
+                    3'b101: begin
+                        mem_size = MEM_HALF;
+                        load_unsigned = 1'b1; // LHU
+                    end
+                    default: begin
+                        mem_size = MEM_WORD; // Default to word size for unsupported funct3 values
+                        load_unsigned = 1'b0; // Default to signed load for unsupported funct3 values
+                    end
+                endcase
             end
 
             OP_STORE: begin
@@ -131,6 +167,12 @@ module control_unit (
                 jump = 1'b0;
                 imm_sel = IMM_STYPE;
                 alu_ctrl = ALU_ADD; // Address calculation
+                case (funct3)
+                    3'b000: mem_size = MEM_BYTE; // SB
+                    3'b001: mem_size = MEM_HALF; // SH
+                    3'b010: mem_size = MEM_WORD; // SW
+                    default: mem_size = MEM_WORD; // Default to word size for unsupported funct3 values
+                endcase
             end
 
             OP_BRANCH: begin

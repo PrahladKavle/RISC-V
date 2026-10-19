@@ -63,6 +63,10 @@ module rv32i_core #(
     // JAL
     wire [31:0] jal_target; // jal_target = pc + immediate 
 
+    // Load and Store Functions
+    wire [1:0] mem_size;
+    wire load_unsigned;
+
     // Extract fields from the current instruction
     assign opcode = instruction[6:0];
     assign rd     = instruction[11:7];
@@ -124,7 +128,9 @@ module rv32i_core #(
         .mem_to_reg(mem_to_reg),
         .branch(branch),
         .jump(jump),
-        .imm_sel(imm_sel)
+        .imm_sel(imm_sel),
+        .mem_size(mem_size),
+        .load_unsigned(load_unsigned)
     );
 
     // Register-file instance
@@ -162,6 +168,8 @@ module rv32i_core #(
     .w_data(rs2_data),
     .w_en(data_memory_write_enable),
     .r_en(mem_read),
+    .mem_size(mem_size),
+    .load_unsigned(load_unsigned),
     .r_data(memory_read_data)
     );
     
