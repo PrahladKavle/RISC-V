@@ -65,59 +65,80 @@ module tb_phase_d;
         rst = 1'b0;
 
         /*
-         * The hex file contains 41 instruction positions.
-         * Six taken branches skip one instruction each, so the
-         * processor executes 35 instructions before reaching PC 164.
+         * The program contains 55 instruction positions.
+         * Taken branches and JALR instructions skip nine positions,
+         * so 46 instructions are actually executed.
          */
-        repeat (35) begin
+        repeat (46) begin
             @(posedge clk);
         end
 
         #1;
 
-        // BEQ: taken and not taken
-        check_register(5'd10, 32'd0);
-        check_register(5'd11, 32'd1);
+        // BEQ
+        check_register(5'd10, 32'd0); // Taken
+        check_register(5'd11, 32'd1); // Not taken
 
-        // BNE: taken and not taken
-        check_register(5'd12, 32'd0);
-        check_register(5'd13, 32'd1);
+        // BNE
+        check_register(5'd12, 32'd0); // Taken
+        check_register(5'd13, 32'd1); // Not taken
 
-        // BLT: taken and not taken
-        check_register(5'd14, 32'd0);
-        check_register(5'd15, 32'd1);
+        // BLT
+        check_register(5'd14, 32'd0); // Taken
+        check_register(5'd15, 32'd1); // Not taken
 
-        // BGE: taken because of equality, then not taken
-        check_register(5'd16, 32'd0);
-        check_register(5'd17, 32'd1);
+        // BGE
+        check_register(5'd16, 32'd0); // Taken on equality
+        check_register(5'd17, 32'd1); // Not taken
 
-        // BLTU: taken and not taken
-        check_register(5'd18, 32'd0);
-        check_register(5'd19, 32'd1);
+        // BLTU
+        check_register(5'd18, 32'd0); // Taken
+        check_register(5'd19, 32'd1); // Not taken
 
-        // BGEU: taken and not taken
-        check_register(5'd20, 32'd0);
-        check_register(5'd21, 32'd1);
+        // BGEU
+        check_register(5'd20, 32'd0); // Taken
+        check_register(5'd21, 32'd1); // Not taken
+
+        // LUI
+        check_register(5'd22, 32'h12345000);
+        check_register(5'd27, 32'hABCDE000);
+
+        // AUIPC
+        check_register(5'd23, 32'h000010A8);
+        check_register(5'd28, 32'h000000C4);
+
+        // First JALR
+        check_register(5'd25, 32'd193);
+        check_register(5'd26, 32'd184);
+        check_register(5'd24, 32'd0);
+
+        // Second JALR
+        check_register(5'd30, 32'd217);
+        check_register(5'd31, 32'd212);
+        check_register(5'd29, 32'd0);
+
+        // Program reached its final instruction
+        check_register(5'd9, 32'd9);
 
         tests = tests + 1;
 
-        if (pc_debug !== 32'd164) begin
+        if (pc_debug !== 32'd220) begin
             failures = failures + 1;
             $display(
-                "FAIL: PC expected=164 actual=%0d",
+                "FAIL: PC expected=220 actual=%0d",
                 pc_debug
             );
         end else begin
-            $display("PASS: PC = 164");
+            $display("PASS: PC = 220");
         end
 
         $display("");
         $display("Tests: %0d, Failures: %0d", tests, failures);
 
         if (failures == 0)
-            $display("ALL BRANCH TESTS PASSED");
+            $display("ALL PHASE D TESTS PASSED");
         else
-            $display("BRANCH TESTS FAILED");
+            $display("PHASE D TESTS FAILED");
 
         $finish;
     end

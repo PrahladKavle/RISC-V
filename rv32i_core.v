@@ -35,7 +35,7 @@ module rv32i_core #(
     wire mem_to_reg;
     wire branch;
     wire jump;
-    wire [1:0] imm_sel;
+    wire [2:0] imm_sel;
 
     // Register-file signals
     wire [31:0] rs1_data;
@@ -67,6 +67,16 @@ module rv32i_core #(
     wire [1:0] mem_size;
     wire load_unsigned;
 
+    // jump and link register
+    wire jalr;
+    wire [31:0] jalr_target;
+    // load upper immediate
+    wire lui;
+    
+    // add upper immediate to pc
+    wire auipc;
+    wire [31:0] auipc_result;
+
     reg branch_condition;
 
     // Extract fields from the current instruction
@@ -86,6 +96,7 @@ module rv32i_core #(
     // BEQ
     assign pc_plus_4 = pc + 32'd4;
     assign branch_target = pc + immediate;
+
     always @(*) begin
         case (funct3)
             3'b000: branch_condition = alu_zero;   // BEQ
@@ -97,17 +108,27 @@ module rv32i_core #(
             default: branch_condition = 1'b0;
         endcase
     end
+
     assign branch_taken = branch && branch_condition;
 
     // JAL
     assign jal_target = pc + immediate;
 
+    // JALR
+    assign jalr_target = {alu_result[31:1], 1'b0};
+
+    // AUIPC
+    assign auipc_result = pc + immediate;
+
     assign writeback_data =
     jump       ? pc_plus_4 :
+    lui        ? immediate :
+    auipc      ? auipc_result :
     mem_to_reg ? memory_read_data :
                  alu_result;
 
     assign next_pc =
+    jalr         ? jalr_target :
     jump         ? jal_target :
     branch_taken ? branch_target :
                    pc_plus_4;
@@ -143,7 +164,10 @@ module rv32i_core #(
         .jump(jump),
         .imm_sel(imm_sel),
         .mem_size(mem_size),
-        .load_unsigned(load_unsigned)
+        .load_unsigned(load_unsigned),
+        .jalr(jalr),
+        .lui(lui),
+        .auipc(auipc)
     );
 
     // Register-file instance

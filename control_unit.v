@@ -13,18 +13,24 @@ module control_unit (
     output reg mem_to_reg,
     output reg branch,
     output reg jump,
-    output reg [1:0] imm_sel,
+    output reg [2:0] imm_sel,
     output reg [1:0] mem_size,
-    output reg load_unsigned
+    output reg load_unsigned,
+    output reg jalr,
+    output reg lui,
+    output reg auipc
 );
     // Opcodes
     localparam [6:0]
-        OP_RTYPE  = 7'b0110011,
-        OP_ITYPE  = 7'b0010011,
-        OP_LOAD   = 7'b0000011,
-        OP_STORE  = 7'b0100011,
-        OP_BRANCH = 7'b1100011,
-        OP_JAL    = 7'b1101111;
+        OP_RTYPE  = 7'b0110011, // ADD, SUB, AND, OR, XOR, SLT, SLL, SRL, SRA
+        OP_ITYPE  = 7'b0010011, // ADDI, ANDI, ORI, XORI, SLTI, SLLI, SRLI, SRAI
+        OP_LOAD   = 7'b0000011, // LW, LH, LB, LHU, LBU
+        OP_STORE  = 7'b0100011, // SW, SH, SB
+        OP_BRANCH = 7'b1100011, // BEQ, BNE, BLT, BGE, BLTU, BGEU
+        OP_JAL    = 7'b1101111, // JAL -jump and link
+        OP_JALR   = 7'b1100111, // JALR -jump and link register
+        OP_LUI = 7'b0110111, // LUI -load upper immediate
+        OP_AUIPC = 7'b0010111; // AUIPC -add upper immediate to PC
 
     // ALU Control Signals
     localparam [3:0]
@@ -40,11 +46,12 @@ module control_unit (
         ALU_SLTU = 4'b1001;
 
     // Imm formats
-    localparam [1:0]
-        IMM_ITYPE = 2'b00,
-        IMM_STYPE = 2'b01,
-        IMM_BTYPE = 2'b10,
-        IMM_JTYPE = 2'b11;
+        localparam [2:0]
+        IMM_ITYPE = 3'b000,
+        IMM_STYPE = 3'b001,
+        IMM_BTYPE = 3'b010,
+        IMM_JTYPE = 3'b011,
+        IMM_UTYPE = 3'b100;
     
     // funct3 values
     localparam [2:0]
@@ -78,6 +85,9 @@ module control_unit (
     always @(*) begin
         mem_size = MEM_WORD;
         load_unsigned = 1'b0;
+        jalr  = 1'b0;
+        lui   = 1'b0;
+        auipc = 1'b0;       
         case (opcode)
             OP_RTYPE: begin
                 reg_write = 1'b1;
@@ -213,6 +223,45 @@ module control_unit (
                 alu_ctrl = ALU_ADD; // Not used
             end
 
+            OP_JALR: begin
+                reg_write = 1'b1;
+                jalr = 1'b1;
+                mem_write = 1'b0;
+                mem_read = 1'b0;
+                alu_src = 1'b1; // Use immediate for JALR
+                mem_to_reg = 1'b0; // Not used
+                branch = 1'b0;
+                jump = 1'b1;
+                imm_sel = IMM_ITYPE; // JALR uses I-type immediate
+                alu_ctrl = ALU_ADD; // Not used
+            end
+
+            OP_LUI: begin
+                reg_write = 1'b1;
+                lui = 1'b1;
+                mem_write = 1'b0;
+                mem_read = 1'b0;
+                alu_src = 1'b1; // Use immediate for LUI
+                mem_to_reg = 1'b0; // Not used
+                branch = 1'b0;
+                jump = 1'b0;
+                imm_sel = IMM_UTYPE; // LUI uses I-type immediate
+                alu_ctrl = ALU_ADD; // Not used
+            end
+
+            OP_AUIPC: begin
+                reg_write = 1'b1;
+                auipc = 1'b1;
+                mem_write = 1'b0;
+                mem_read = 1'b0;
+                alu_src = 1'b1; // Use immediate for AUIPC
+                mem_to_reg = 1'b0; // Not used
+                branch = 1'b0;
+                jump = 1'b0;
+                imm_sel = IMM_UTYPE; // AUIPC uses U-type immediate
+                alu_ctrl = ALU_ADD; // Not used
+            end
+            
             default: begin
                 reg_write = 1'b0;
                 mem_write = 1'b0;
@@ -223,6 +272,8 @@ module control_unit (
                 jump = 1'b0;
                 imm_sel = IMM_ITYPE; // Default to I-type
                 alu_ctrl = ALU_ADD; // Default to ADD
+                jalr = 1'b0; // Default to not JALR
+                lui = 1'b0; // Default to not LUI
             end
 
         endcase
