@@ -77,6 +77,10 @@ module rv32i_core #(
     wire auipc;
     wire [31:0] auipc_result;
 
+    wire [11:0] system_imm;
+    wire trap;
+    wire breakpoint;
+
     reg branch_condition;
 
     // Extract fields from the current instruction
@@ -120,6 +124,9 @@ module rv32i_core #(
     // AUIPC
     assign auipc_result = pc + immediate;
 
+    // System instructions
+    assign system_imm = instruction[31:20];
+
     assign writeback_data =
     jump       ? pc_plus_4 :
     lui        ? immediate :
@@ -128,6 +135,7 @@ module rv32i_core #(
                  alu_result;
 
     assign next_pc =
+    trap         ? pc :
     jalr         ? jalr_target :
     jump         ? jal_target :
     branch_taken ? branch_target :
@@ -167,7 +175,10 @@ module rv32i_core #(
         .load_unsigned(load_unsigned),
         .jalr(jalr),
         .lui(lui),
-        .auipc(auipc)
+        .auipc(auipc),
+        .trap(trap),
+        .breakpoint(breakpoint),
+        .system_imm(system_imm)
     );
 
     // Register-file instance

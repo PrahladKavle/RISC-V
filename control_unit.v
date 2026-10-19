@@ -4,6 +4,7 @@ module control_unit (
     input wire [6:0] opcode,
     input wire [2:0] funct3,
     input wire [6:0] funct7,
+    input wire [11:0] system_imm,
 
     output reg [3:0] alu_ctrl,
     output reg reg_write,
@@ -18,7 +19,9 @@ module control_unit (
     output reg load_unsigned,
     output reg jalr,
     output reg lui,
-    output reg auipc
+    output reg auipc,
+    output reg trap,
+    output reg breakpoint
 );
     // Opcodes
     localparam [6:0]
@@ -30,7 +33,9 @@ module control_unit (
         OP_JAL    = 7'b1101111, // JAL -jump and link
         OP_JALR   = 7'b1100111, // JALR -jump and link register
         OP_LUI = 7'b0110111, // LUI -load upper immediate
-        OP_AUIPC = 7'b0010111; // AUIPC -add upper immediate to PC
+        OP_AUIPC = 7'b0010111, // AUIPC -add upper immediate to PC
+        OP_FENCE = 7'b0001111, // FENCE -memory ordering
+        OP_SYSTEM = 7'b1110011; // SYSTEM - ecall, ebreak, mret, etc.
 
     // ALU Control Signals
     localparam [3:0]
@@ -87,7 +92,9 @@ module control_unit (
         load_unsigned = 1'b0;
         jalr  = 1'b0;
         lui   = 1'b0;
-        auipc = 1'b0;       
+        auipc = 1'b0; 
+        trap = 1'b0;
+        breakpoint = 1'b0;
         case (opcode)
             OP_RTYPE: begin
                 reg_write = 1'b1;
@@ -259,6 +266,42 @@ module control_unit (
                 branch = 1'b0;
                 jump = 1'b0;
                 imm_sel = IMM_UTYPE; // AUIPC uses U-type immediate
+                alu_ctrl = ALU_ADD; // Not used
+            end
+
+            OP_SYSTEM: begin
+                reg_write = 1'b0;
+                mem_write = 1'b0;
+                mem_read = 1'b0;
+                alu_src = 1'b0; // Not used
+                mem_to_reg = 1'b0; // Not used
+                branch = 1'b0;
+                jump = 1'b0;
+                imm_sel = IMM_ITYPE; // Not used
+                alu_ctrl = ALU_ADD; // Not used
+                if (funct3 == 3'b000) begin
+                    case (system_imm)
+                        12'h000: begin
+                            trap = 1'b1; // ECALL
+                        end
+                
+                        12'h001: begin
+                            trap = 1'b1; // EBREAK is also a trap
+                            breakpoint = 1'b1;
+                        end
+                    endcase
+                end
+            end
+
+            OP_FENCE: begin
+                reg_write = 1'b0;
+                mem_write = 1'b0;
+                mem_read = 1'b0;
+                alu_src = 1'b0; // Not used
+                mem_to_reg = 1'b0; // Not used
+                branch = 1'b0;
+                jump = 1'b0;
+                imm_sel = IMM_ITYPE; // Not used
                 alu_ctrl = ALU_ADD; // Not used
             end
             
