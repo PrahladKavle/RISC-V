@@ -67,6 +67,8 @@ module rv32i_core #(
     wire [1:0] mem_size;
     wire load_unsigned;
 
+    reg branch_condition;
+
     // Extract fields from the current instruction
     assign opcode = instruction[6:0];
     assign rd     = instruction[11:7];
@@ -84,7 +86,18 @@ module rv32i_core #(
     // BEQ
     assign pc_plus_4 = pc + 32'd4;
     assign branch_target = pc + immediate;
-    assign branch_taken = branch && alu_zero;
+    always @(*) begin
+        case (funct3)
+            3'b000: branch_condition = alu_zero;   // BEQ
+            3'b001: branch_condition = !alu_zero;  // BNE
+            3'b100: branch_condition = !alu_zero;  // BLT
+            3'b101: branch_condition = alu_zero;   // BGE
+            3'b110: branch_condition = !alu_zero;  // BLTU
+            3'b111: branch_condition = alu_zero;   // BGEU
+            default: branch_condition = 1'b0;
+        endcase
+    end
+    assign branch_taken = branch && branch_condition;
 
     // JAL
     assign jal_target = pc + immediate;

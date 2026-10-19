@@ -57,7 +57,12 @@ module control_unit (
         F3_BEQ     = 3'b000,
         F3_SLL     = 3'b001,
         F3_SLTU    = 3'b011,
-        F3_SRL     = 3'b101; // also for SRA
+        F3_SRL     = 3'b101, // also for SRA
+        F3_BNE     = 3'b001,
+        F3_BLT     = 3'b100,
+        F3_BGE     = 3'b101,
+        F3_BLTU    = 3'b110,
+        F3_BGEU    = 3'b111;
 
     // Relevant funct7 values
     localparam [6:0]
@@ -185,6 +190,15 @@ module control_unit (
                 jump = 1'b0;
                 imm_sel = IMM_BTYPE;
                 alu_ctrl = ALU_SUB; // For BEQ, we check if rs1 - rs2 == 0
+                case (funct3)
+                    F3_BEQ: alu_ctrl = ALU_SUB; // BEQ
+                    F3_BNE: alu_ctrl = ALU_SUB; // BNE
+                    F3_BLT: alu_ctrl = ALU_SLT; // BLT
+                    F3_BGE: alu_ctrl = ALU_SLT; // BGE
+                    F3_BLTU: alu_ctrl = ALU_SLTU; // BLTU
+                    F3_BGEU: alu_ctrl = ALU_SLTU; // BGEU
+                    default: alu_ctrl = ALU_SUB; // Default to SUB for unsupported funct3 values
+                endcase
             end
 
             OP_JAL: begin
