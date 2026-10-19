@@ -14,7 +14,14 @@ module tb_control_unit;
     wire mem_to_reg;
     wire branch;
     wire jump;
-    wire [1:0] imm_sel;
+    wire [2:0] imm_sel;
+    wire [1:0] mem_size;
+    wire load_unsigned;
+    wire jalr;
+    wire lui;
+    wire auipc;
+
+    wire [19:0] actual_controls;
 
     integer tests;
     integer failures;
@@ -25,25 +32,51 @@ module tb_control_unit;
         OP_LOAD   = 7'b0000011,
         OP_STORE  = 7'b0100011,
         OP_BRANCH = 7'b1100011,
-        OP_JAL    = 7'b1101111;
+        OP_JAL    = 7'b1101111,
+        OP_JALR   = 7'b1100111,
+        OP_LUI    = 7'b0110111,
+        OP_AUIPC  = 7'b0010111;
 
     localparam [3:0]
-        ALU_ADD = 4'b0000,
-        ALU_SUB = 4'b0001,
-        ALU_AND = 4'b0010,
-        ALU_OR  = 4'b0011,
-        ALU_XOR = 4'b0100,
-        ALU_SLT = 4'b0101,
-        ALU_SLL = 4'b0110,
-        ALU_SRL = 4'b0111,
-        ALU_SRA = 4'b1000,
+        ALU_ADD  = 4'b0000,
+        ALU_SUB  = 4'b0001,
+        ALU_AND  = 4'b0010,
+        ALU_OR   = 4'b0011,
+        ALU_XOR  = 4'b0100,
+        ALU_SLT  = 4'b0101,
+        ALU_SLL  = 4'b0110,
+        ALU_SRL  = 4'b0111,
+        ALU_SRA  = 4'b1000,
         ALU_SLTU = 4'b1001;
 
+    localparam [2:0]
+        IMM_I = 3'b000,
+        IMM_S = 3'b001,
+        IMM_B = 3'b010,
+        IMM_J = 3'b011,
+        IMM_U = 3'b100;
+
     localparam [1:0]
-        IMM_I = 2'b00,
-        IMM_S = 2'b01,
-        IMM_B = 2'b10,
-        IMM_J = 2'b11;
+        MEM_BYTE = 2'b00,
+        MEM_HALF = 2'b01,
+        MEM_WORD = 2'b10;
+
+    assign actual_controls = {
+        alu_ctrl,
+        reg_write,
+        mem_write,
+        mem_read,
+        alu_src,
+        mem_to_reg,
+        branch,
+        jump,
+        imm_sel,
+        mem_size,
+        load_unsigned,
+        jalr,
+        lui,
+        auipc
+    };
 
     control_unit dut (
         .opcode(opcode),
@@ -57,63 +90,34 @@ module tb_control_unit;
         .mem_to_reg(mem_to_reg),
         .branch(branch),
         .jump(jump),
-        .imm_sel(imm_sel)
+        .imm_sel(imm_sel),
+        .mem_size(mem_size),
+        .load_unsigned(load_unsigned),
+        .jalr(jalr),
+        .lui(lui),
+        .auipc(auipc)
     );
 
-    task check_control;
-        input [127:0] test_name;
+    task check_decode;
+        input [159:0] test_name;
         input [6:0] test_opcode;
         input [2:0] test_funct3;
         input [6:0] test_funct7;
-        input [3:0] expected_alu;
-        input expected_reg_write;
-        input expected_mem_write;
-        input expected_mem_read;
-        input expected_alu_src;
-        input expected_mem_to_reg;
-        input expected_branch;
-        input expected_jump;
-        input [1:0] expected_imm;
+        input [19:0] expected_controls;
 
         begin
             opcode = test_opcode;
             funct3 = test_funct3;
             funct7 = test_funct7;
-
             #1;
+
             tests = tests + 1;
 
-            if ((alu_ctrl   !== expected_alu)        ||
-                (reg_write  !== expected_reg_write)  ||
-                (mem_write  !== expected_mem_write)  ||
-                (mem_read   !== expected_mem_read)   ||
-                (alu_src    !== expected_alu_src)    ||
-                (mem_to_reg !== expected_mem_to_reg) ||
-                (branch     !== expected_branch)     ||
-                (jump       !== expected_jump)       ||
-                (imm_sel    !== expected_imm)) begin
-
+            if (actual_controls !== expected_controls) begin
                 failures = failures + 1;
-
                 $display("FAIL: %0s", test_name);
-                $display("  alu_ctrl   expected=%b actual=%b",
-                         expected_alu, alu_ctrl);
-                $display("  reg_write  expected=%b actual=%b",
-                         expected_reg_write, reg_write);
-                $display("  mem_write  expected=%b actual=%b",
-                         expected_mem_write, mem_write);
-                $display("  mem_read   expected=%b actual=%b",
-                         expected_mem_read, mem_read);
-                $display("  alu_src    expected=%b actual=%b",
-                         expected_alu_src, alu_src);
-                $display("  mem_to_reg expected=%b actual=%b",
-                         expected_mem_to_reg, mem_to_reg);
-                $display("  branch     expected=%b actual=%b",
-                         expected_branch, branch);
-                $display("  jump       expected=%b actual=%b",
-                         expected_jump, jump);
-                $display("  imm_sel    expected=%b actual=%b",
-                         expected_imm, imm_sel);
+                $display("  expected=%b", expected_controls);
+                $display("  actual  =%b", actual_controls);
             end else begin
                 $display("PASS: %0s", test_name);
             end
@@ -124,80 +128,54 @@ module tb_control_unit;
         tests = 0;
         failures = 0;
 
-        // name, opcode, funct3, funct7, ALU,
-        // reg_write, mem_write, mem_read, alu_src,
-        // mem_to_reg, branch, jump, imm_sel
+        // R-type instructions
+        check_decode("ADD",  OP_RTYPE, 3'b000, 7'b0000000, {ALU_ADD,  7'b1000000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("SUB",  OP_RTYPE, 3'b000, 7'b0100000, {ALU_SUB,  7'b1000000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("SLL",  OP_RTYPE, 3'b001, 7'b0000000, {ALU_SLL,  7'b1000000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("SLT",  OP_RTYPE, 3'b010, 7'b0000000, {ALU_SLT,  7'b1000000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("SLTU", OP_RTYPE, 3'b011, 7'b0000000, {ALU_SLTU, 7'b1000000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("XOR",  OP_RTYPE, 3'b100, 7'b0000000, {ALU_XOR,  7'b1000000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("SRL",  OP_RTYPE, 3'b101, 7'b0000000, {ALU_SRL,  7'b1000000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("SRA",  OP_RTYPE, 3'b101, 7'b0100000, {ALU_SRA,  7'b1000000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("OR",   OP_RTYPE, 3'b110, 7'b0000000, {ALU_OR,   7'b1000000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("AND",  OP_RTYPE, 3'b111, 7'b0000000, {ALU_AND,  7'b1000000, IMM_I, MEM_WORD, 4'b0000});
 
-        check_control(
-            "ADD", OP_RTYPE, 3'b000, 7'b0000000, ALU_ADD,
-            1, 0, 0, 0, 0, 0, 0, IMM_I
-        );
+        // I-type ALU instructions
+        check_decode("ADDI",  OP_ITYPE, 3'b000, 7'b0000000, {ALU_ADD,  7'b1001000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("SLLI",  OP_ITYPE, 3'b001, 7'b0000000, {ALU_SLL,  7'b1001000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("SLTI",  OP_ITYPE, 3'b010, 7'b0000000, {ALU_SLT,  7'b1001000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("SLTIU", OP_ITYPE, 3'b011, 7'b0000000, {ALU_SLTU, 7'b1001000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("XORI",  OP_ITYPE, 3'b100, 7'b0000000, {ALU_XOR,  7'b1001000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("SRLI",  OP_ITYPE, 3'b101, 7'b0000000, {ALU_SRL,  7'b1001000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("SRAI",  OP_ITYPE, 3'b101, 7'b0100000, {ALU_SRA,  7'b1001000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("ORI",   OP_ITYPE, 3'b110, 7'b0000000, {ALU_OR,   7'b1001000, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("ANDI",  OP_ITYPE, 3'b111, 7'b0000000, {ALU_AND,  7'b1001000, IMM_I, MEM_WORD, 4'b0000});
 
-        check_control(
-            "SUB", OP_RTYPE, 3'b000, 7'b0100000, ALU_SUB,
-            1, 0, 0, 0, 0, 0, 0, IMM_I
-        );
+        // Loads and stores
+        check_decode("LB",  OP_LOAD, 3'b000, 7'b0000000, {ALU_ADD, 7'b1011100, IMM_I, MEM_BYTE, 4'b0000});
+        check_decode("LH",  OP_LOAD, 3'b001, 7'b0000000, {ALU_ADD, 7'b1011100, IMM_I, MEM_HALF, 4'b0000});
+        check_decode("LW",  OP_LOAD, 3'b010, 7'b0000000, {ALU_ADD, 7'b1011100, IMM_I, MEM_WORD, 4'b0000});
+        check_decode("LBU", OP_LOAD, 3'b100, 7'b0000000, {ALU_ADD, 7'b1011100, IMM_I, MEM_BYTE, 4'b1000});
+        check_decode("LHU", OP_LOAD, 3'b101, 7'b0000000, {ALU_ADD, 7'b1011100, IMM_I, MEM_HALF, 4'b1000});
+        check_decode("SB", OP_STORE, 3'b000, 7'b0000000, {ALU_ADD, 7'b0101000, IMM_S, MEM_BYTE, 4'b0000});
+        check_decode("SH", OP_STORE, 3'b001, 7'b0000000, {ALU_ADD, 7'b0101000, IMM_S, MEM_HALF, 4'b0000});
+        check_decode("SW", OP_STORE, 3'b010, 7'b0000000, {ALU_ADD, 7'b0101000, IMM_S, MEM_WORD, 4'b0000});
 
-        check_control(
-            "AND", OP_RTYPE, 3'b111, 7'b0000000, ALU_AND,
-            1, 0, 0, 0, 0, 0, 0, IMM_I
-        );
+        // Branches
+        check_decode("BEQ",  OP_BRANCH, 3'b000, 7'b0000000, {ALU_SUB,  7'b0000010, IMM_B, MEM_WORD, 4'b0000});
+        check_decode("BNE",  OP_BRANCH, 3'b001, 7'b0000000, {ALU_SUB,  7'b0000010, IMM_B, MEM_WORD, 4'b0000});
+        check_decode("BLT",  OP_BRANCH, 3'b100, 7'b0000000, {ALU_SLT,  7'b0000010, IMM_B, MEM_WORD, 4'b0000});
+        check_decode("BGE",  OP_BRANCH, 3'b101, 7'b0000000, {ALU_SLT,  7'b0000010, IMM_B, MEM_WORD, 4'b0000});
+        check_decode("BLTU", OP_BRANCH, 3'b110, 7'b0000000, {ALU_SLTU, 7'b0000010, IMM_B, MEM_WORD, 4'b0000});
+        check_decode("BGEU", OP_BRANCH, 3'b111, 7'b0000000, {ALU_SLTU, 7'b0000010, IMM_B, MEM_WORD, 4'b0000});
 
-        check_control(
-            "OR", OP_RTYPE, 3'b110, 7'b0000000, ALU_OR,
-            1, 0, 0, 0, 0, 0, 0, IMM_I
-        );
+        // Jumps and upper immediates
+        check_decode("JAL",   OP_JAL,   3'b000, 7'b0000000, {ALU_ADD, 7'b1000001, IMM_J, MEM_WORD, 4'b0000});
+        check_decode("JALR",  OP_JALR,  3'b000, 7'b0000000, {ALU_ADD, 7'b1001001, IMM_I, MEM_WORD, 4'b0100});
+        check_decode("LUI",   OP_LUI,   3'b000, 7'b0000000, {ALU_ADD, 7'b1001000, IMM_U, MEM_WORD, 4'b0010});
+        check_decode("AUIPC", OP_AUIPC, 3'b000, 7'b0000000, {ALU_ADD, 7'b1001000, IMM_U, MEM_WORD, 4'b0001});
 
-        check_control(
-            "XOR", OP_RTYPE, 3'b100, 7'b0000000, ALU_XOR,
-            1, 0, 0, 0, 0, 0, 0, IMM_I
-        );
-
-        check_control(
-            "SLT", OP_RTYPE, 3'b010, 7'b0000000, ALU_SLT,
-            1, 0, 0, 0, 0, 0, 0, IMM_I
-        );
-
-        check_control(
-            "ADDI", OP_ITYPE, 3'b000, 7'b0000000, ALU_ADD,
-            1, 0, 0, 1, 0, 0, 0, IMM_I
-        );
-
-        check_control(
-            "ANDI", OP_ITYPE, 3'b111, 7'b0000000, ALU_AND,
-            1, 0, 0, 1, 0, 0, 0, IMM_I
-        );
-
-        check_control(
-            "ORI", OP_ITYPE, 3'b110, 7'b0000000, ALU_OR,
-            1, 0, 0, 1, 0, 0, 0, IMM_I
-        );
-
-        check_control(
-            "LW", OP_LOAD, 3'b010, 7'b0000000, ALU_ADD,
-            1, 0, 1, 1, 1, 0, 0, IMM_I
-        );
-
-        check_control(
-            "SW", OP_STORE, 3'b010, 7'b0000000, ALU_ADD,
-            0, 1, 0, 1, 0, 0, 0, IMM_S
-        );
-
-        check_control(
-            "BEQ", OP_BRANCH, 3'b000, 7'b0000000, ALU_SUB,
-            0, 0, 0, 0, 0, 1, 0, IMM_B
-        );
-
-        check_control(
-            "JAL", OP_JAL, 3'b000, 7'b0000000, ALU_ADD,
-            1, 0, 0, 0, 0, 0, 1, IMM_J
-        );
-
-        check_control(
-            "INVALID OPCODE", 7'b0000000, 3'b000, 7'b0000000,
-            ALU_ADD,
-            0, 0, 0, 0, 0, 0, 0, IMM_I
-        );
+        check_decode("INVALID OPCODE", 7'b0000000, 3'b000, 7'b0000000, {ALU_ADD, 7'b0000000, IMM_I, MEM_WORD, 4'b0000});
 
         $display("");
         $display("Tests: %0d, Failures: %0d", tests, failures);

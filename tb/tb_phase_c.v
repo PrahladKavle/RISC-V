@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-module tb_memory_instructions;
+module tb_phase_c;
 
     reg clk;
     reg rst;
@@ -82,7 +82,7 @@ module tb_memory_instructions;
 
     initial begin
         $dumpfile("test/phase_c.vcd");
-        $dumpvars(0, tb_memory_instructions);
+        $dumpvars(0, tb_phase_c);
 
         clk = 1'b0;
         rst = 1'b1;

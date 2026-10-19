@@ -11,7 +11,7 @@ module tb_instruction_memory;
     instruction_memory #(
         .DEPTH(256),
         .ADDR_WIDTH(8),
-        .INIT_FILE("program.hex")
+        .INIT_FILE("tb/instruction_mem_test.hex")
     ) dut (
         .addr(addr),
         .instruction(instruction)

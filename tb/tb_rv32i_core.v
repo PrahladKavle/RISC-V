@@ -18,9 +18,7 @@ module tb_rv32i_core;
         .rst(rst),
         .pc_debug(pc_debug),
         .instruction_debug(instruction_debug),
-        .alu_result_debug(alu_result_debug),
-        .mem_size(mem_size),
-        .load_unsigned(load_unsigned)
+        .alu_result_debug(alu_result_debug)
     );
 
     always #5 clk = ~clk;

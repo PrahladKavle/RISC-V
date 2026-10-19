@@ -3,15 +3,16 @@
 module tb_imm_gen;
 
     reg [31:0] instruction;
-    reg [1:0] imm_sel;
+    reg [2:0] imm_sel;
 
     wire [31:0] imm_out;
 
-    localparam [1:0]
-        Itype = 2'b00,
-        Stype = 2'b01,
-        Btype = 2'b10,
-        Jtype = 2'b11;
+    localparam [2:0]
+        Itype = 3'b000,
+        Stype = 3'b001,
+        Btype = 3'b010,
+        Jtype = 3'b011,
+        Utype = 3'b100;
 
     imm_gen dut (
         .instruction(instruction),
@@ -124,6 +125,26 @@ module tb_imm_gen;
             $display("FAIL: J-type -4, got %h", imm_out);
         else
             $display("PASS: J-type -4");
+
+        // U-type: upper immediate = 0x12345
+        instruction = 32'h12345000;
+        imm_sel = Utype;
+        #1;
+
+        if (imm_out !== 32'h12345000)
+            $display("FAIL: U-type 0x12345, got %h", imm_out);
+        else
+            $display("PASS: U-type 0x12345");
+
+        // U-type preserves an upper immediate with bit 31 set
+        instruction = 32'hABCDE000;
+        imm_sel = Utype;
+        #1;
+
+        if (imm_out !== 32'hABCDE000)
+            $display("FAIL: U-type 0xABCDE, got %h", imm_out);
+        else
+            $display("PASS: U-type 0xABCDE");
 
         $display("Immediate-generator tests complete");
         $finish;

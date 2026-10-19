@@ -64,49 +64,54 @@ module tb_phase_b;
         #12;
         rst = 1'b0;
 
-        repeat (14) begin
+        // Phase B contains 19 sequential instructions.
+        repeat (19) begin
             @(posedge clk);
         end
 
         #1;
 
         check_register(5'd1,  32'd1);
-        check_register(5'd2,  32'd16);
-        check_register(5'd3,  32'd4);
+        check_register(5'd2,  32'd4);
+        check_register(5'd3,  32'd16);
         check_register(5'd4,  32'hFFFFFFF0);
-        check_register(5'd5,  32'hFFFFFFFC);
+        check_register(5'd5,  32'd2);
 
-        check_register(5'd6,  32'd1);
-        check_register(5'd7,  32'd0);
-        check_register(5'd8,  32'd1);
-        check_register(5'd9,  32'd0);
+        // R-type additions
+        check_register(5'd6,  32'h3FFFFFFC);
+        check_register(5'd7,  32'hFFFFFFFC);
+        check_register(5'd10, 32'd0);
+        check_register(5'd11, 32'd1);
 
-        check_register(5'd10, 32'd14);
-        check_register(5'd11, 32'd15);
-
-        check_register(5'd12, 32'h80000000);
-        check_register(5'd13, 32'd1);
-        check_register(5'd14, 32'hFFFFFFFF);
+        // I-type additions
+        check_register(5'd12, 32'd32);
+        check_register(5'd13, 32'h1FFFFFFE);
+        check_register(5'd14, 32'hFFFFFFFE);
+        check_register(5'd15, 32'd1);
+        check_register(5'd16, 32'd0);
+        check_register(5'd17, 32'd1);
+        check_register(5'd18, 32'd0);
+        check_register(5'd19, 32'd14);
 
         tests = tests + 1;
 
-        if (pc_debug !== 32'd56) begin
+        if (pc_debug !== 32'd76) begin
             failures = failures + 1;
             $display(
-                "FAIL: PC expected=56 actual=%0d",
+                "FAIL: PC expected=76 actual=%0d",
                 pc_debug
             );
         end else begin
-            $display("PASS: PC = 56");
+            $display("PASS: PC = 76");
         end
 
         $display("");
         $display("Tests: %0d, Failures: %0d", tests, failures);
 
         if (failures == 0)
-            $display("ALL PHASE B I-TYPE TESTS PASSED");
+            $display("ALL PHASE B TESTS PASSED");
         else
-            $display("PHASE B I-TYPE TESTS FAILED");
+            $display("PHASE B TESTS FAILED");
 
         $finish;
     end

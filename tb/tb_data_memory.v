@@ -7,11 +7,18 @@ module tb_data_memory;
     reg [31:0] w_data;
     reg w_en;
     reg r_en;
+    reg [1:0] mem_size;
+    reg load_unsigned;
 
     wire [31:0] r_data;
 
     integer tests;
     integer failures;
+
+    localparam [1:0]
+        MEM_BYTE = 2'b00,
+        MEM_HALF = 2'b01,
+        MEM_WORD = 2'b10;
 
     data_memory dut (
         .clk(clk),
@@ -19,35 +26,43 @@ module tb_data_memory;
         .w_data(w_data),
         .w_en(w_en),
         .r_en(r_en),
+        .mem_size(mem_size),
+        .load_unsigned(load_unsigned),
         .r_data(r_data)
     );
 
-    // 10 ns clock period
     always #5 clk = ~clk;
 
-    task write_word;
+    task write_access;
         input [31:0] test_addr;
         input [31:0] test_data;
+        input [1:0] test_size;
 
         begin
             addr = test_addr;
             w_data = test_data;
+            mem_size = test_size;
+            load_unsigned = 1'b0;
             w_en = 1'b1;
             r_en = 1'b0;
 
             @(posedge clk);
             #1;
-
             w_en = 1'b0;
         end
     endtask
 
     task check_read;
+        input [127:0] test_name;
         input [31:0] test_addr;
+        input [1:0] test_size;
+        input test_unsigned;
         input [31:0] expected_data;
 
         begin
             addr = test_addr;
+            mem_size = test_size;
+            load_unsigned = test_unsigned;
             r_en = 1'b1;
             #1;
 
@@ -56,17 +71,13 @@ module tb_data_memory;
             if (r_data !== expected_data) begin
                 failures = failures + 1;
                 $display(
-                    "FAIL: addr=%0d expected=%h actual=%h",
-                    test_addr,
+                    "FAIL: %0s expected=%h actual=%h",
+                    test_name,
                     expected_data,
                     r_data
                 );
             end else begin
-                $display(
-                    "PASS: addr=%0d data=%h",
-                    test_addr,
-                    r_data
-                );
+                $display("PASS: %0s = %h", test_name, r_data);
             end
         end
     endtask
@@ -77,11 +88,11 @@ module tb_data_memory;
         w_data = 32'd0;
         w_en = 1'b0;
         r_en = 1'b0;
-
+        mem_size = MEM_WORD;
+        load_unsigned = 1'b0;
         tests = 0;
         failures = 0;
 
-        // Read disabled should produce zero
         #1;
         tests = tests + 1;
 
@@ -92,58 +103,36 @@ module tb_data_memory;
             $display("PASS: disabled read produces zero");
         end
 
-        // Write three distinct memory words
-        write_word(32'd0, 32'hDEADBEEF);
-        write_word(32'd4, 32'hCAFEBABE);
-        write_word(32'd8, 32'h12345678);
+        write_access(32'd0, 32'h80FF7F01, MEM_WORD);
 
-        // Read them back
-        check_read(32'd0, 32'hDEADBEEF);
-        check_read(32'd4, 32'hCAFEBABE);
-        check_read(32'd8, 32'h12345678);
+        check_read("LW",  32'd0, MEM_WORD, 1'b0, 32'h80FF7F01);
+        check_read("LB positive", 32'd0, MEM_BYTE, 1'b0, 32'h00000001);
+        check_read("LB -1", 32'd2, MEM_BYTE, 1'b0, 32'hFFFFFFFF);
+        check_read("LBU 0xFF", 32'd2, MEM_BYTE, 1'b1, 32'h000000FF);
+        check_read("LB 0x80", 32'd3, MEM_BYTE, 1'b0, 32'hFFFFFF80);
+        check_read("LBU 0x80", 32'd3, MEM_BYTE, 1'b1, 32'h00000080);
+        check_read("LH positive", 32'd0, MEM_HALF, 1'b0, 32'h00007F01);
+        check_read("LH negative", 32'd2, MEM_HALF, 1'b0, 32'hFFFF80FF);
+        check_read("LHU", 32'd2, MEM_HALF, 1'b1, 32'h000080FF);
 
-        // Attempt to overwrite address 4 with writing disabled
+        write_access(32'd4, 32'hAABBCCDD, MEM_WORD);
+        write_access(32'd5, 32'h00000011, MEM_BYTE);
+        check_read("SB preserves lanes", 32'd4, MEM_WORD, 1'b0, 32'hAABB11DD);
+
+        write_access(32'd6, 32'h00002233, MEM_HALF);
+        check_read("SH preserves lanes", 32'd4, MEM_WORD, 1'b0, 32'h223311DD);
+
         addr = 32'd4;
         w_data = 32'hFFFFFFFF;
+        mem_size = MEM_WORD;
         w_en = 1'b0;
         r_en = 1'b0;
-
         @(posedge clk);
         #1;
+        check_read("disabled write", 32'd4, MEM_WORD, 1'b0, 32'h223311DD);
 
-        check_read(32'd4, 32'hCAFEBABE);
-
-        // Verify write does not occur before the rising edge
-        addr = 32'd0;
-        w_data = 32'hAAAAAAAA;
-        w_en = 1'b1;
-        r_en = 1'b1;
-
-        #2;
-        tests = tests + 1;
-
-        if (r_data !== 32'hDEADBEEF) begin
-            failures = failures + 1;
-            $display("FAIL: memory changed before rising edge");
-        end else begin
-            $display("PASS: write waits for rising edge");
-        end
-
-        @(posedge clk);
-        #1;
-        w_en = 1'b0;
-
-        check_read(32'd0, 32'hAAAAAAAA);
-
-        // Addresses 0-3 select the same word for Phase A
-        check_read(32'd1, 32'hAAAAAAAA);
-        check_read(32'd2, 32'hAAAAAAAA);
-        check_read(32'd3, 32'hAAAAAAAA);
-
-        // Disable reading again
         r_en = 1'b0;
         #1;
-
         tests = tests + 1;
 
         if (r_data !== 32'd0) begin

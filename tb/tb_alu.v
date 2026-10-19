@@ -151,10 +151,54 @@ module tb_alu;
         else
             $display("PASS: SLT positive vs negative");
 
+        // SLL: 1 << 4 = 16
+        a = 32'd1;
+        b = 32'd4;
+        ctrl = SLL;
+        #1;
+
+        if (result !== 32'd16)
+            $display("FAIL: SLL");
+        else
+            $display("PASS: SLL");
+
+        // SRL fills the upper bits with zeros
+        a = 32'hFFFFFFF0;
+        b = 32'd2;
+        ctrl = SRL;
+        #1;
+
+        if (result !== 32'h3FFFFFFC)
+            $display("FAIL: SRL");
+        else
+            $display("PASS: SRL");
+
+        // SRA preserves the sign bit
+        a = 32'hFFFFFFF0;
+        b = 32'd2;
+        ctrl = SRA;
+        #1;
+
+        if (result !== 32'hFFFFFFFC)
+            $display("FAIL: SRA");
+        else
+            $display("PASS: SRA");
+
+        // Unsigned comparison: 1 < 0xFFFFFFFF
+        a = 32'd1;
+        b = 32'hFFFFFFFF;
+        ctrl = SLTU;
+        #1;
+
+        if (result !== 32'd1)
+            $display("FAIL: SLTU");
+        else
+            $display("PASS: SLTU");
+
         // Unsupported control value
         a = 32'd10;
         b = 32'd20;
-        ctrl = 4'b0111;
+        ctrl = 4'b1111;
         #1;
 
         if ((result !== 32'd0) || (zero !== 1'b1))
