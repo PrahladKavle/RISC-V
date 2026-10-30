@@ -11,6 +11,7 @@ module data_memory (
 );
 
     reg [31:0] memory [0:1023]; // 1K x 32-bit memory
+    wire ram_depth = 16384; // Depth of the RAM
 
     always @(posedge clk) begin
         if (w_en) begin
