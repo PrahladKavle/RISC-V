@@ -8,7 +8,9 @@ module rv32i_core #(
 
     output wire [31:0] pc_debug,
     output wire [31:0] instruction_debug,
-    output wire [31:0] alu_result_debug
+    output wire [31:0] alu_result_debug,
+    output wire tohost_write,
+    output wire [31:0] tohost_data
 );
 
     // PC signals
@@ -218,7 +220,9 @@ module rv32i_core #(
     .r_en(mem_read),
     .mem_size(mem_size),
     .load_unsigned(load_unsigned),
-    .r_data(memory_read_data)
+    .r_data(memory_read_data),
+    .tohost_write(tohost_write),
+    .tohost_data(tohost_data)
     );
     
     // Optional signals exposed for waveform debugging

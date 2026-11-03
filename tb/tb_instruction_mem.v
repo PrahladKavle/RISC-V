@@ -4,21 +4,22 @@ module tb_instruction_memory;
 
     reg [31:0] addr;
     wire [31:0] instruction;
+    wire instruction_valid;
 
     integer tests;
     integer failures;
 
     instruction_memory #(
-        .DEPTH(256),
-        .ADDR_WIDTH(8),
         .INIT_FILE("tb/instruction_mem_test.hex")
     ) dut (
         .addr(addr),
-        .instruction(instruction)
+        .instruction(instruction),
+        .instruction_valid(instruction_valid)
     );
 
-    task check_instruction;
+    task check_fetch;
         input [31:0] test_addr;
+        input expected_valid;
         input [31:0] expected_instruction;
 
         begin
@@ -27,18 +28,23 @@ module tb_instruction_memory;
 
             tests = tests + 1;
 
-            if (instruction !== expected_instruction) begin
+            if (instruction_valid !== expected_valid ||
+                instruction !== expected_instruction) begin
+
                 failures = failures + 1;
                 $display(
-                    "FAIL: addr=%0d expected=%h actual=%h",
+                    "FAIL: addr=%h expected_valid=%b actual_valid=%b expected_instruction=%h actual_instruction=%h",
                     test_addr,
+                    expected_valid,
+                    instruction_valid,
                     expected_instruction,
                     instruction
                 );
             end else begin
                 $display(
-                    "PASS: addr=%0d instruction=%h",
+                    "PASS: addr=%h valid=%b instruction=%h",
                     test_addr,
+                    instruction_valid,
                     instruction
                 );
             end
@@ -50,20 +56,21 @@ module tb_instruction_memory;
         tests = 0;
         failures = 0;
 
-        // Aligned instruction addresses
-        check_instruction(32'd0,  32'h11111111);
-        check_instruction(32'd4,  32'h22222222);
-        check_instruction(32'd8,  32'h33333333);
-        check_instruction(32'd12, 32'h44444444);
+        // The short hex file initializes words 0–3.
+        // Set the final 64 KiB ROM word directly for this boundary test.
+        dut.memory[16383] = 32'hDEADBEEF;
 
-        // Bottom two address bits are ignored
-        check_instruction(32'd1, 32'h11111111);
-        check_instruction(32'd2, 32'h11111111);
-        check_instruction(32'd3, 32'h11111111);
+        // Normal in-range reads
+        check_fetch(32'h00000000, 1'b1, 32'h11111111);
+        check_fetch(32'h00000004, 1'b1, 32'h22222222);
+        check_fetch(32'h00000008, 1'b1, 32'h33333333);
+        check_fetch(32'h0000000C, 1'b1, 32'h44444444);
 
-        check_instruction(32'd5, 32'h22222222);
-        check_instruction(32'd6, 32'h22222222);
-        check_instruction(32'd7, 32'h22222222);
+        // Final valid 32-bit instruction address in 64 KiB ROM
+        check_fetch(32'h0000FFFC, 1'b1, 32'hDEADBEEF);
+
+        // First invalid address: must not alias to memory word zero
+        check_fetch(32'h00010000, 1'b0, 32'h00000000);
 
         $display("");
         $display("Tests: %0d, Failures: %0d", tests, failures);
