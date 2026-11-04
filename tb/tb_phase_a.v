@@ -71,8 +71,8 @@ module tb_phase_a;
         rst = 1'b0;
 
         // Twenty static instructions exist.
-        // BEQ and JAL each skip one, so 18 execute.
-        repeat (18) begin
+        // BEQ and JAL each skip one, so 19 execute.
+        repeat (19) begin
             @(posedge clk);
         end
 
@@ -90,7 +90,8 @@ module tb_phase_a;
         check_register(5'd10, 32'd13);
         check_register(5'd11, 32'd17);
         check_register(5'd12, 32'd1);
-        check_register(5'd13, 32'd64);
+        check_register(5'd13, 32'd68);
+        check_register(5'd14, 32'h00010000);
         check_register(5'd15, 32'd18);
         check_register(5'd16, 32'd22);
 
@@ -109,11 +110,11 @@ module tb_phase_a;
 
         tests = tests + 1;
 
-        if (pc_debug !== 32'd80) begin
+        if (pc_debug !== 32'd84) begin
             failures = failures + 1;
-            $display("FAIL: PC expected=80 actual=%0d", pc_debug);
+            $display("FAIL: PC expected=84 actual=%0d", pc_debug);
         end else begin
-            $display("PASS: PC = 80");
+            $display("PASS: PC = 84");
         end
 
         $display("");

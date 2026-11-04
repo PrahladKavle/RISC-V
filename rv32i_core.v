@@ -1,7 +1,8 @@
 // Datapath and control logic
 
 module rv32i_core #(
-    parameter INIT_FILE = "program.hex"
+    parameter INIT_FILE = "program.hex",
+    parameter DATA_INIT_FILE = ""
 ) (
     input wire clk,
     input wire rst,
@@ -212,7 +213,9 @@ module rv32i_core #(
     );
 
     // Data memory instance
-    data_memory data_mem (
+    data_memory #(
+    .INIT_FILE(DATA_INIT_FILE)
+    ) data_mem (
     .clk(clk),
     .addr(alu_result),
     .w_data(rs2_data),

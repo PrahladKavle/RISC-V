@@ -2,7 +2,8 @@ module data_memory #(
     parameter DEPTH = 16384,
     parameter ADDR_WIDTH = 14,
     parameter [31:0] BASE_ADDR = 32'h00010000,
-    parameter TOHOST_ADDR = 32'h10000000
+    parameter [31:0] TOHOST_ADDR = 32'h10000000,
+    parameter INIT_FILE = ""
 )(
     input wire clk,
     input wire [31:0] addr,
@@ -18,6 +19,16 @@ module data_memory #(
 );
 
     reg [31:0] memory [0:DEPTH-1]; 
+
+    integer index;
+    
+    initial begin
+        for (index = 0; index < DEPTH; index = index + 1)
+            memory[index] = 32'b0;
+    
+        if (INIT_FILE != "")
+            $readmemh(INIT_FILE, memory);
+    end
 
     wire addr_in_range;
     wire [31:0] byte_offset;

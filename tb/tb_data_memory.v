@@ -29,7 +29,8 @@ module tb_data_memory;
         .DEPTH(16384),
         .ADDR_WIDTH(14),
         .BASE_ADDR(DATA_BASE),
-        .TOHOST_ADDR(TOHOST_ADDR)
+        .TOHOST_ADDR(TOHOST_ADDR),
+        .INIT_FILE("tb/data_memory_init.hex")
     ) dut (
         .clk(clk),
         .addr(addr),
@@ -49,17 +50,17 @@ module tb_data_memory;
         input [31:0] test_addr;
         input [31:0] test_data;
         input [1:0] test_size;
-    
+
         begin
             @(negedge clk);
-        
+
             addr = test_addr;
             w_data = test_data;
             mem_size = test_size;
             load_unsigned = 1'b0;
             w_en = 1'b1;
             r_en = 1'b0;
-        
+
             @(posedge clk);
             #1;
             w_en = 1'b0;
@@ -140,18 +141,21 @@ module tb_data_memory;
             $display("PASS: disabled read produces zero");
         end
 
-        // Valid accesses begin at DATA_BASE.
+        // Hex line 0 maps to DATA_BASE; line 1 maps to DATA_BASE + 4.
+        check_read("initial word 0", DATA_BASE, MEM_WORD, 1'b0, 32'hDEADBEEF);
+        check_read("initial word 1", DATA_BASE + 32'd4, MEM_WORD, 1'b0, 32'h01234567);
+
         write_access(DATA_BASE, 32'h80FF7F01, MEM_WORD);
 
-        check_read("LW",          DATA_BASE,            MEM_WORD, 1'b0, 32'h80FF7F01);
-        check_read("LB positive", DATA_BASE,            MEM_BYTE, 1'b0, 32'h00000001);
-        check_read("LB -1",       DATA_BASE + 32'd2,    MEM_BYTE, 1'b0, 32'hFFFFFFFF);
-        check_read("LBU 0xFF",   DATA_BASE + 32'd2,    MEM_BYTE, 1'b1, 32'h000000FF);
-        check_read("LB 0x80",    DATA_BASE + 32'd3,    MEM_BYTE, 1'b0, 32'hFFFFFF80);
-        check_read("LBU 0x80",   DATA_BASE + 32'd3,    MEM_BYTE, 1'b1, 32'h00000080);
-        check_read("LH positive", DATA_BASE,           MEM_HALF, 1'b0, 32'h00007F01);
-        check_read("LH negative", DATA_BASE + 32'd2,   MEM_HALF, 1'b0, 32'hFFFF80FF);
-        check_read("LHU",         DATA_BASE + 32'd2,   MEM_HALF, 1'b1, 32'h000080FF);
+        check_read("LW", DATA_BASE, MEM_WORD, 1'b0, 32'h80FF7F01);
+        check_read("LB positive", DATA_BASE, MEM_BYTE, 1'b0, 32'h00000001);
+        check_read("LB -1", DATA_BASE + 32'd2, MEM_BYTE, 1'b0, 32'hFFFFFFFF);
+        check_read("LBU 0xFF", DATA_BASE + 32'd2, MEM_BYTE, 1'b1, 32'h000000FF);
+        check_read("LB 0x80", DATA_BASE + 32'd3, MEM_BYTE, 1'b0, 32'hFFFFFF80);
+        check_read("LBU 0x80", DATA_BASE + 32'd3, MEM_BYTE, 1'b1, 32'h00000080);
+        check_read("LH positive", DATA_BASE, MEM_HALF, 1'b0, 32'h00007F01);
+        check_read("LH negative", DATA_BASE + 32'd2, MEM_HALF, 1'b0, 32'hFFFF80FF);
+        check_read("LHU", DATA_BASE + 32'd2, MEM_HALF, 1'b1, 32'h000080FF);
 
         write_access(DATA_BASE + 32'd4, 32'hAABBCCDD, MEM_WORD);
         write_access(DATA_BASE + 32'd5, 32'h00000011, MEM_BYTE);
@@ -160,17 +164,13 @@ module tb_data_memory;
         write_access(DATA_BASE + 32'd6, 32'h00002233, MEM_HALF);
         check_read("SH preserves lanes", DATA_BASE + 32'd4, MEM_WORD, 1'b0, 32'h223311DD);
 
-        // An out-of-range write must not alias to the first RAM word.
         write_access(32'h00000000, 32'hDEADBEEF, MEM_WORD);
         check_read("invalid write blocked", DATA_BASE, MEM_WORD, 1'b0, 32'h80FF7F01);
-
-        // An out-of-range read returns zero.
         check_read("invalid read zero", 32'h00000000, MEM_WORD, 1'b0, 32'h00000000);
 
-        // A tohost store reports an event and does not modify RAM.
         write_access(TOHOST_ADDR, 32'd1, MEM_WORD);
         check_tohost(32'd1);
-            
+
         check_read(
             "tohost does not modify RAM",
             DATA_BASE,
@@ -178,7 +178,7 @@ module tb_data_memory;
             1'b0,
             32'h80FF7F01
         );
-            
+
         check_read(
             "tohost read zero",
             TOHOST_ADDR,
@@ -186,23 +186,22 @@ module tb_data_memory;
             1'b0,
             32'h00000000
         );
-            
-        // The pulse clears on the following rising clock edge.
+
         @(posedge clk);
         #1;
         tests = tests + 1;
-            
+
         if (tohost_write !== 1'b0) begin
             failures = failures + 1;
             $display("FAIL: tohost_write did not clear");
         end else begin
             $display("PASS: tohost_write clears after one clock");
         end
-        
+
         r_en = 1'b0;
         #1;
-
         tests = tests + 1;
+
         if (r_data !== 32'd0) begin
             failures = failures + 1;
             $display("FAIL: r_en=0 did not produce zero");

@@ -53,7 +53,7 @@ module tb_phase_c;
     endtask
 
     task check_memory;
-        input [9:0] word_address;
+        input [13:0] word_address;
         input [31:0] expected_value;
 
         begin
@@ -92,8 +92,8 @@ module tb_phase_c;
         #12;
         rst = 1'b0;
 
-        // Execute all 23 instructions
-        repeat (23) begin
+        // Execute all 24 instructions
+        repeat (24) begin
             @(posedge clk);
         end
 
@@ -115,6 +115,8 @@ module tb_phase_c;
         check_register(5'd10, 32'h0000005A);
         check_register(5'd11, 32'h0000005A);
 
+        check_register(5'd13, 32'h00010000);
+
         // Final memory contents
         check_memory(10'd0, 32'h80332211);
         check_memory(10'd1, 32'h0123FF80);
@@ -122,14 +124,14 @@ module tb_phase_c;
 
         tests = tests + 1;
 
-        if (pc_debug !== 32'd92) begin
+        if (pc_debug !== 32'd96) begin
             failures = failures + 1;
             $display(
-                "FAIL: PC expected=92 actual=%0d",
+                "FAIL: PC expected=96 actual=%0d",
                 pc_debug
             );
         end else begin
-            $display("PASS: PC = 92");
+            $display("PASS: PC = 96");
         end
 
         $display("");
