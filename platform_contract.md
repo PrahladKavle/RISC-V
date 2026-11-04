@@ -70,25 +70,37 @@ This is not yet full architectural trap behavior. There are currently no
 | Property               | Value                    |
 |------------------------|--------------------------|
 | Type                   | Combinational ROM        |
-| Storage                | 256 × 32-bit words       |
-| Capacity               | 1 KiB                    |
+| Storage                | 16384 × 32-bit words     |
+| Capacity               | 64 KiB                   |
 | Initialization         | `$readmemh`              |
-| Intended address range | `0x00000000`–`0x000003FF`|
+| Intended address range | `0x00000000–0x0000FFFF`  |
 
 ### Data Memory
 
 | Property               | Value                     |
 |------------------------|---------------------------|
 | Type                   | Byte-addressable RAM      |
-| Storage                | 1024 × 32-bit words       |
-| Capacity               | 4 KiB                     |
+| Storage                | 16384 × 32-bit words      |
+| Capacity               | 64 KiB                    |
 | Reads                  | Combinational             |
 | Writes                 | Rising clock edge         |
-| Intended address range | `0x00000000`–`0x00000FFF` |
+| Intended address range | `0x00010000–0x0001FFFF`   |
 
-The current RTL indexes only low address bits. Therefore, addresses outside
-the intended ranges may alias into implemented memory rather than raising an
-access fault.
+### Test MMIO (`tohost`)
+
+| Property       | Value                                     |
+|----------------|-------------------------------------------|
+| Address        | `0x10000000`                              |
+| Write behavior | Pulses `tohost_write` for one clock       |
+| Data capture   | Stores the written value in `tohost_data` |
+| Value `1`      | PASS                                      |
+| Value `2`      | FAIL                                      |
+
+A `tohost` write does not modify data RAM. Reads from this address return zero.
+
+Instruction fetches and data-memory accesses are range-checked. Out-of-range
+data reads return zero and out-of-range writes are ignored. They do not yet
+raise architectural access-fault traps.
 
 ## Alignment Requirements
 
@@ -108,10 +120,19 @@ Only naturally aligned memory accesses are supported by the current core.
 - There are no `valid`, `ready`, wait-state, or error-response signals.
 - Every supported instruction completes in one clock cycle.
 
-## Compliance-Test Integration Plan
+## Compliance-Test Integration Status
 
-Instruction memory: 0x0000_0000–0x0000_FFFF, 64 KiB
-Data memory:        0x0001_0000–0x0001_FFFF, 64 KiB
-Test MMIO tohost:   0x1000_0000
-tohost data 1:      PASS
-tohost data 2:      FAIL
+Implemented:
+
+- 64 KiB mapped instruction memory
+- 64 KiB mapped data memory
+- Instruction and data hex-image loading with `$readmemh`
+- Data-memory zero initialization before image loading
+- `tohost` MMIO completion interface
+
+Remaining:
+
+1. Linker script matching this memory map.
+2. ELF-to-instruction/data-hex conversion tool.
+3. `riscv-arch-test` DUT configuration and model macros.
+4. Architectural trap and exception behavior.
