@@ -21,7 +21,8 @@ module tb_tohost;
     integer failures;
 
     rv32i_core #(
-        .INIT_FILE("tb/program_tohost.hex")
+        .INIT_FILE("build/program.hex"),
+        .DATA_INIT_FILE("build/program_data.hex")
     ) dut (
         .clk(clk),
         .rst(rst),
@@ -65,24 +66,34 @@ module tb_tohost;
                     );
                 end
 
-                if (dut.reg_file.registers[5'd1] !== 32'h10000000) begin
+                if (dut.reg_file.registers[5'd5] !== 32'h00010000) begin
                     failures = failures + 1;
                     $display(
-                        "FAIL: x1 expected 10000000, got %h",
-                        dut.reg_file.registers[5'd1]
+                        "FAIL: x5 expected 00010000, got %h",
+                        dut.reg_file.registers[5'd5]
                     );
                 end else begin
-                    $display("PASS: x1 = 10000000");
+                    $display("PASS: x5 = 00010000");
                 end
 
-                if (dut.reg_file.registers[5'd2] !== 32'd1) begin
+                if (dut.reg_file.registers[5'd6] !== 32'h00000001) begin
                     failures = failures + 1;
                     $display(
-                        "FAIL: x2 expected 1, got %h",
-                        dut.reg_file.registers[5'd2]
+                        "FAIL: x6 expected 00000001, got %h",
+                        dut.reg_file.registers[5'd6]
                     );
                 end else begin
-                    $display("PASS: x2 = 1");
+                    $display("PASS: x6 = 00000001");
+                end
+
+                if (dut.reg_file.registers[5'd7] !== 32'h10000000) begin
+                    failures = failures + 1;
+                    $display(
+                        "FAIL: x7 expected 10000000, got %h",
+                        dut.reg_file.registers[5'd7]
+                    );
+                end else begin
+                    $display("PASS: x7 = 10000000");
                 end
 
                 if (failures == 0)
