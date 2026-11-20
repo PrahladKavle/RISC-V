@@ -22,7 +22,9 @@ SECTIONS
 
     .bss (NOLOAD) :
     {
+        _bss_start = .;
         *(.bss .bss.*)
         *(COMMON)
+        _bss_end = .;
     } > DMEM
 }
