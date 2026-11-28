@@ -1,0 +1,1 @@
+python3 "$HOME/Verilog/RISC-V/compliance/run_act_test.py"

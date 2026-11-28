@@ -2,7 +2,12 @@
 
 module rv32i_core #(
     parameter INIT_FILE = "program.hex",
-    parameter DATA_INIT_FILE = ""
+    parameter DATA_INIT_FILE = "",
+    parameter IMEM_DEPTH = 16384,
+    parameter IMEM_ADDR_WIDTH = 14,
+    parameter DMEM_DEPTH = 16384,
+    parameter DMEM_ADDR_WIDTH = 14,
+    parameter [31:0] DMEM_BASE_ADDR = 32'h00010000
 ) (
     input wire clk,
     input wire rst,
@@ -11,7 +16,10 @@ module rv32i_core #(
     output wire [31:0] instruction_debug,
     output wire [31:0] alu_result_debug,
     output wire tohost_write,
-    output wire [31:0] tohost_data
+    output wire [31:0] tohost_data,
+    output wire data_mem_write_event,
+    output wire [31:0] data_mem_write_addr,
+    output wire [31:0] data_mem_write_data
 );
 
     // PC signals
@@ -154,6 +162,8 @@ module rv32i_core #(
 
     // Instruction memory instance
     instruction_memory #(
+        .DEPTH(IMEM_DEPTH),
+        .ADDR_WIDTH(IMEM_ADDR_WIDTH),
         .INIT_FILE(INIT_FILE)
     ) instruction_mem (
         .addr(pc),
@@ -214,6 +224,9 @@ module rv32i_core #(
 
     // Data memory instance
     data_memory #(
+    .DEPTH(DMEM_DEPTH),
+    .ADDR_WIDTH(DMEM_ADDR_WIDTH),
+    .BASE_ADDR(DMEM_BASE_ADDR),
     .INIT_FILE(DATA_INIT_FILE)
     ) data_mem (
     .clk(clk),
@@ -225,7 +238,10 @@ module rv32i_core #(
     .load_unsigned(load_unsigned),
     .r_data(memory_read_data),
     .tohost_write(tohost_write),
-    .tohost_data(tohost_data)
+    .tohost_data(tohost_data),
+    .mem_write_event(data_mem_write_event),
+    .mem_write_addr(data_mem_write_addr),
+    .mem_write_data(data_mem_write_data)
     );
     
     // Optional signals exposed for waveform debugging

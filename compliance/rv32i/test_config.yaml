@@ -1,0 +1,10 @@
+name: prahlad-rv32i
+description: RV32I single-cycle core with separate instruction and data memories
+compiler_exe: riscv64-elf-gcc
+objdump_exe: riscv64-elf-objdump
+ref_model_exe: /Users/prahladprabhakarkavle/Verilog/sail-riscv/build/c_emulator/sail_riscv_sim
+udb_config: rv32i.yaml
+linker_script: link.ld
+dut_include_dir: .
+harts: 1
+include_priv_tests: false

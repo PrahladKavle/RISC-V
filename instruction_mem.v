@@ -1,5 +1,5 @@
 module instruction_memory #(
-    parameter DEPTH = 16384, // 16,384 x 4 bytes = 64KB
+    parameter DEPTH = 16384,
     parameter ADDR_WIDTH = 14,
     parameter INIT_FILE = "program.hex"
 ) (
@@ -17,7 +17,7 @@ module instruction_memory #(
         $readmemh(INIT_FILE, memory);
     end
 
-    assign addr_in_range = (addr[31:16] == 16'h0000); // Check if the address is in the range of 0x00000000 to 0x0000FFFF
+    assign addr_in_range = (addr < (DEPTH * 4));
     assign instruction_valid = addr_in_range; // Instruction is valid if the address is in range
 
     assign instruction = addr_in_range

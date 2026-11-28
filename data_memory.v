@@ -2,7 +2,7 @@ module data_memory #(
     parameter DEPTH = 16384,
     parameter ADDR_WIDTH = 14,
     parameter [31:0] BASE_ADDR = 32'h00010000,
-    parameter [31:0] TOHOST_ADDR = 32'h10000000,
+    parameter [31:0] TOHOST_ADDR = 32'h10000000, // 0x1000_0000 tohost
     parameter INIT_FILE = ""
 )(
     input wire clk,
@@ -15,7 +15,10 @@ module data_memory #(
 
     output reg [31:0] r_data,
     output reg tohost_write,
-    output reg [31:0] tohost_data
+    output reg [31:0] tohost_data,
+    output reg mem_write_event,
+    output reg [31:0] mem_write_addr,
+    output reg [31:0] mem_write_data
 );
 
     reg [31:0] memory [0:DEPTH-1]; 
@@ -41,10 +44,14 @@ module data_memory #(
 
     always @(posedge clk) begin
         tohost_write <= 1'b0;
+        mem_write_event <= 1'b0;
         if (w_en && addr == TOHOST_ADDR) begin
             tohost_write <= 1'b1;
             tohost_data <= w_data;
         end else if (w_en && addr_in_range) begin
+            mem_write_event <= 1'b1;
+            mem_write_addr <= addr;
+            mem_write_data <= w_data;
             case (mem_size)
                 2'b00: begin // Byte
                     memory[word_index][(addr[1:0] * 8) +: 8] <= w_data[7:0];
